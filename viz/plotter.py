@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.patches as patches
 
 class SimPlotter:
-    def __init__(self, boat, wind_field, target_position, obstacles):
+    def __init__(self, boat, wind_field, target_position, obstacles, sailing_path=None):
         self.boat = boat
         self.wind_field = wind_field
 
@@ -13,6 +14,7 @@ class SimPlotter:
         self.ax.set_aspect('equal')
         self.ax.set_title("Sailing Sim")
 
+        self.sailing_path = sailing_path or []
         self.boat_marker, = self.ax.plot([], [], 'bo', markersize=8)
         self.path_line, = self.ax.plot([], [], 'b-', linewidth=1)
         self.wind_arrow = None
@@ -35,6 +37,12 @@ class SimPlotter:
                 u, v = self.wind_field.get_vector(x, y)
                 U[y, x], V[y, x] = u, v
         self.ax.quiver(X, Y, U, V, angles='xy', scale=10, color='grey', alpha=0.5)
+
+        if self.sailing_path:
+            xs = [p[0] for p in self.sailing_path]
+            ys = [p[1] for p in self.sailing_path]
+            self.ax.plot(xs, ys, 'k--', label="Sailing Path")
+            self.ax.scatter(xs, ys, s=5, c='k')
 
     def init(self):
         self.boat_marker.set_data([], [])

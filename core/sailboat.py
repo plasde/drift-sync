@@ -74,5 +74,5 @@ class Sailboat:
     def _move(self):
         self.pos += self.velocity * self.dt
         self.history.append(self.pos.copy())
-        if self.distance_to_target < 0.5:
+        if hasattr(self, "distance_to_target") and self.distance_to_target < 0.5:
             self.path_index += 1
