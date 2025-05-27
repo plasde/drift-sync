@@ -1,41 +1,58 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import matplotlib.patches as patches
+from shapely.geometry import Point
 
 class SimPlotter:
-    def __init__(self, boat, wind_field, target_position, obstacles, sailing_path=None):
+    def __init__(self, boat, wind_field, target_position, obstacles, geo = None, sailing_path=None):
         self.boat = boat
         self.wind_field = wind_field
+        self.target_position = target_position
+        self.coastline = geo.coastlines_m
+        self.obstacles = obstacles
+        self.mask = geo.sea_mask
 
-        self.fig, self.ax = plt.subplots(figsize=(8, 8))
-        self.ax.set_xlim(0, wind_field.width)
-        self.ax.set_ylim(0, wind_field.height)
+        self.fig, self.ax = plt.subplots(figsize=(10, 10))
+        self.ax.set_xlim(wind_field.minx, wind_field.maxx)
+        self.ax.set_ylim(wind_field.miny, wind_field.maxy)
         self.ax.set_aspect('equal')
-        self.ax.set_title("Sailing Sim")
+        self.ax.set_title("Sailing Sim: Real world coordinates")
 
         self.sailing_path = sailing_path or []
         self.boat_marker, = self.ax.plot([], [], 'bo', markersize=8)
         self.path_line, = self.ax.plot([], [], 'b-', linewidth=1)
-        self.wind_arrow = None
         self.boat_speed_text = self.ax.text(0.02, 0.95, '', transform=self.ax.transAxes)
         self.wind_speed_text = self.ax.text(0.02, 0.90, '', transform=self.ax.transAxes)
 
+        # Sea mask background
+        self.ax.imshow(
+            self.mask,
+            extent=(wind_field.minx, wind_field.maxx, wind_field.miny, wind_field.maxy),
+            origin='lower',
+            cmap='Blues',
+            alpha=0.5
+        )
 
+        # Plot coastlines
+        self.coastline.plot(ax=self.ax, color='black')
+
+        # Plot starting point (boat's initial position)
+        self.ax.plot(self.boat.pos[0], self.boat.pos[1], 'go', markersize=10, label="Start")
         # Plot target point (destination)
-        self.ax.plot(target_position[0], target_position[1], 'gx', markersize=10, label="Goal")
+        self.ax.plot(target_position[0], target_position[1], 'rx', markersize=10, label="Goal")
 
         # Plot obstacles
         for ox, oy in obstacles:
             self.ax.add_patch(plt.Rectangle((ox - 0.5, oy - 0.5), 1, 1, color='black'))
 
         # Plot full wind field as quiver
-        X, Y = np.meshgrid(np.arange(self.wind_field.width), np.arange(self.wind_field.height))
+        X, Y = np.meshgrid(np.arange(self.wind_field.minx, self.wind_field.maxx, wind_field.dx * 5),
+                           np.arange(self.wind_field.miny, self.wind_field.maxy, wind_field.dy * 5))
         U, V = np.zeros_like(X, dtype=float), np.zeros_like(Y, dtype=float)
-        for y in range(self.wind_field.height):
-            for x in range(self.wind_field.width):
-                u, v = self.wind_field.get_vector(x, y)
-                U[y, x], V[y, x] = u, v
+        for i in range(Y.shape[0]):
+            for j in range(X.shape[1]):
+                u, v = self.wind_field.get_vector(X[0, j], Y[i, 0])
+                U[i, j], V[i, j] = u, v
         self.ax.quiver(X, Y, U, V, angles='xy', scale=10, color='grey', alpha=0.5)
 
         if self.sailing_path:
@@ -57,12 +74,9 @@ class SimPlotter:
         wind_vec = np.array(self.wind_field.get_vector(x, y))
         self.boat.update(wind_vec)
 
-        bx, by = self.boat.pos
-        self.boat_marker.set_data([bx], [by])
-
+        self.boat_marker.set_data([x], [y])
         history = np.array(self.boat.history)
         self.path_line.set_data(history[:, 0], history[:, 1])
-
         self.boat_speed_text.set_text(f"Boat speed: {self.boat.current_speed: .2f} knots")
         self.wind_speed_text.set_text(f"Wind speed: {self.wind_field.wind_speed: .2f} knots")
         
@@ -78,6 +92,6 @@ class SimPlotter:
             interval=50,
             repeat=False
         )
-        plt.legend()
-        plt.grid(True)
+        self.ax.legend(loc='upper right')
+        self.ax.grid(True)
         plt.show()
