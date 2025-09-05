@@ -6,7 +6,7 @@ This project investigates autonomous sailing through the integration of path pla
 
 Objective: Compute long-distance routes under environmental constraints.
 
-Method: A* search algorithm with sailing time as the cost function. Cost is adjusted using wind and meteorological data (GRIB).
+Method: Following best-VMG laylines from start and goal to intersects (waypoints). A* search algorithm as fallback after getting stuck.
 
 
 ### Local Path Planning
