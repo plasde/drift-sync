@@ -67,6 +67,7 @@ class RealWorldGeography:
 
     def create_grid(self):
         """Create the meter-based grid"""
+        print(self.bounds_m)
         minx, maxx, miny, maxy = self.bounds_m
 
         self.width = int((maxx - minx) / self.resolution) + 1
@@ -170,34 +171,17 @@ class RealWorldSailingEnvironment:
     Complete sailing environment with real-world coordinates
     """
 
-    def __init__(self, sailing_area="english_channel", resolution_meters=100):
+    def __init__(self, bounds=(0, 0, 0, 0), resolution_meters=100):
         """
         Args:
             sailing_area: Predefined area or custom bbox
             resolution_meters: Grid resolution
         """
-
-        # Predefined sailing areas
-        self.sailing_areas = {
-            "english_channel": (51.2, 50.8, 1.5, -1.0),  # Dover-Calais area
-            "san_francisco_bay": (37.9, 37.7, -122.3, -122.5),  # SF Bay
-            "mediterranean": (43.5, 42.5, 7.5, 6.0),  # Nice-Monaco area
-            "chesapeake_bay": (39.5, 37.0, -75.5, -77.0),  # Chesapeake Bay
-            "solent": (50.8, 50.7, -1.2, -1.6),  # Solent, UK
-        }
-
-        if isinstance(sailing_area, str):
-            if sailing_area not in self.sailing_areas:
-                raise ValueError(
-                    f"Unknown sailing area. Choose from: {list(self.sailing_areas.keys())}"
-                )
-            bbox = self.sailing_areas[sailing_area]
-        else:
-            bbox = sailing_area
+        self.bbox = bounds
 
         # Create geography and wind field
-        print(f"Creating sailing environment for {sailing_area}...")
-        self.geography = RealWorldGeography(bbox, resolution_meters)
+        print(f"Creating sailing environment for {self.bbox}...")
+        self.geography = RealWorldGeography(self.bbox, resolution_meters)
 
         # Create uniform wind field (can be changed later)
         self.wind_field = UniformWindField(
@@ -244,7 +228,6 @@ class RealWorldSailingEnvironment:
 
         ax.imshow(
             self.geography.sea_mask,
-            extent=extent,
             origin="lower",
             cmap="Blues",
             alpha=0.3,
@@ -285,10 +268,11 @@ class RealWorldSailingEnvironment:
 
         return fig, ax
 
+    # Example usage and integration with your existing code
 
-# Example usage and integration with your existing code
+
 def create_sailing_environment(
-    area="english_channel", wind_speed=8.0, wind_direction=220
+    bounds=(50.0, 52.0, 1.5, 0.0), wind_speed=8.0, wind_direction=220
 ):
     """
     Create a complete sailing environment
@@ -303,7 +287,7 @@ def create_sailing_environment(
     """
 
     # Create environment
-    env = RealWorldSailingEnvironment(area, resolution_meters=50)
+    env = RealWorldSailingEnvironment(bounds, resolution_meters=50)
 
     # Set wind conditions
     env.set_wind(wind_speed, wind_direction)
@@ -348,20 +332,16 @@ class WindFieldAdapter:
 
 if __name__ == "__main__":
     # Test the real-world sailing environment
-
+    bounds = (52.0, 50.0, 1.0, 1.5)
     # Create environment
-    env = create_sailing_environment(
-        "english_channel", wind_speed=10, wind_direction=220
-    )
+    env = create_sailing_environment(bounds=bounds, wind_speed=10, wind_direction=220)
 
     # Plot it
     env.plot_environment()
 
-    # Example positions (Dover to Calais)
-    dover = (51.13, 1.31)  # lat, lon
-    calais = (50.95, 1.85)  # lat, lon
-
-    start_m, goal_m = env.get_start_goal_positions(dover, calais)
+    start_m, goal_m = env.get_start_goal_positions(
+        (bounds[0], bounds[2]), (bounds[1], bounds[3])
+    )
     print(f"Dover (meters): {start_m}")
     print(f"Calais (meters): {goal_m}")
 

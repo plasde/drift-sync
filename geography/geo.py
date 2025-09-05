@@ -11,23 +11,29 @@ from affine import Affine
 
 class Geo:
     def __init__(self, dx=1000, dy=1000, epsg_id=28992):
-
         self.epsg_id = epsg_id
         self.dx = dx
         self.dy = dy
 
         # Define region
-        lat_min, lat_max = 52.85, 53.25
-        lon_min, lon_max = 4.65, 5.55
-        roi = gpd.GeoDataFrame(geometry=[box(lon_min, lat_min, lon_max, lat_max)], crs="EPSG:4326")
+        lat_min, lat_max = 52.0, 54.0
+        lon_min, lon_max = 4.0, 6.0
+        roi = gpd.GeoDataFrame(
+            geometry=[box(lon_min, lat_min, lon_max, lat_max)], crs="EPSG:4326"
+        )
         roi_proj = roi.to_crs(epsg=self.epsg_id)
 
         # Load geometry
-        names = ['ne_10m_coastline', 'ne_10m_land', 'ne_10m_reefs', 'ne_10m_minor_islands']
-        layers = [gpd.read_file(f'geography/{name}.shp') for name in names]
+        names = [
+            "ne_10m_coastline",
+            "ne_10m_land",
+            "ne_10m_reefs",
+            "ne_10m_minor_islands",
+        ]
+        layers = [gpd.read_file(f"geography/{name}.shp") for name in names]
         all_layers = pd.concat(layers, ignore_index=True).to_crs(epsg=self.epsg_id)
         self.obstacles = gpd.clip(all_layers, roi_proj)
-        self.coastlines_m = self.obstacles[self.obstacles['featurecla'] == 'Coastline']
+        self.coastlines_m = self.obstacles[self.obstacles["featurecla"] == "Coastline"]
 
         # Grid
         self.minx, self.miny, self.maxx, self.maxy = self.obstacles.total_bounds
@@ -42,16 +48,18 @@ class Geo:
             transform=transform,
             fill=0,
             all_touched=True,
-            dtype='uint8'
+            dtype="uint8",
         )
         self.sea_mask = mask_raster == 0
-        self.transformer = Transformer.from_crs("EPSG:4326", self.epsg_id, always_xy=True)
+        self.transformer = Transformer.from_crs(
+            "EPSG:4326", self.epsg_id, always_xy=True
+        )
 
     def snap_to_sea(self, x, y):
         mask = self.sea_mask
         x_flat = self.xx[mask]
         y_flat = self.yy[mask]
-        dists = (x_flat - x)**2 + (y_flat - y)**2
+        dists = (x_flat - x) ** 2 + (y_flat - y) ** 2
         idx = np.argmin(dists)
         return x_flat[idx], y_flat[idx]
 

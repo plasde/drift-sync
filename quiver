@@ -34,18 +34,34 @@ DT = 1.0
 WIND_SPEED = 8.0  # knots
 WIND_DIRECTION = 220  # degrees from north
 
-# SAILING_AREAS
-#    "english_channel": (51.10, 51.0, 1.6, 0.0),  # Dover-Calais area
-#    "san_francisco_bay": (37.9, 37.7, -122.3, -122.5),  # SF Bay
-#    "mediterranean": (43.5, 42.5, 7.5, 6.0),  # Nice-Monaco area
-#    "chesapeake_bay": (39.5, 37.0, -75.5, -77.0),  # Chesapeake Bay
-#    "solent": (50.8, 50.7, -1.2, -1.6),  # Solent, UK
-#
+# Sailing area selection
+SAILING_AREAS = {
+    "english_channel": (51.2, 50.8, 1.5, -1.0),  # Dover-Calais area
+    "san_francisco_bay": (37.9, 37.7, -122.3, -122.5),  # SF Bay
+    "mediterranean": (43.5, 42.5, 7.5, 6.0),  # Nice-Monaco area
+    "chesapeake_bay": (39.5, 37.0, -75.5, -77.0),  # Chesapeake Bay
+    "solent": (50.8, 50.7, -1.2, -1.6),  # Solent, UK
+}
+
+CURRENT_AREA = "english_channel"
 
 # Geographic waypoints (lat, lon)
-start = (51.10, 1.20)
-goal = (51.00, 1.60)
-
+WAYPOINTS = {
+    "english_channel": {
+        "dover": (51.13, 1.31),
+        "calais": (50.95, 1.85),
+        "start": (51.10, 1.20),
+        "goal": (51.00, 1.60),
+    },
+    "san_francisco_bay": {
+        "start": (37.82, -122.42),  # Near Golden Gate
+        "goal": (37.75, -122.38),  # Near Bay Bridge
+    },
+    "solent": {
+        "start": (50.75, -1.30),  # Near Portsmouth
+        "goal": (50.74, -1.50),  # Near Yarmouth
+    },
+}
 
 OBSTACLES = []
 
@@ -76,18 +92,8 @@ class GeographyPlotter:
     def setup_plot(self):
         """Set up the plotting area"""
         bounds = self.geography.bounds_m
-        self.ax.set_xlim(
-            bounds[0],
-            bounds[1],
-            # bounds[0] - ((bounds[1] - bounds[0]) / 2),
-            # bounds[1] + ((bounds[1] - bounds[0]) / 2),
-        )
-        self.ax.set_ylim(
-            bounds[2],
-            bounds[3],
-            # bounds[2] - (bounds[3] - bounds[2] / 2),
-            # bounds[3] + (bounds[3] - bounds[2] / 2),
-        )
+        self.ax.set_xlim(bounds[0], bounds[1])
+        self.ax.set_ylim(bounds[2], bounds[3])
         self.ax.set_aspect("equal")
         self.ax.set_title("Real-World Sailing Simulation")
 
@@ -99,10 +105,12 @@ class GeographyPlotter:
     def plot_geography(self):
         """Plot the geographic elements"""
         bounds = self.geography.bounds_m
+        extent = [bounds[0], bounds[1], bounds[2], bounds[3]]
 
         # Sea mask
         self.ax.imshow(
             self.geography.sea_mask,
+            extent=extent,
             origin="lower",
             cmap="Blues",
             alpha=0.3,
@@ -122,7 +130,9 @@ class GeographyPlotter:
         U = np.full_like(X, self.wind_field.wind_u)
         V = np.full_like(Y, self.wind_field.wind_v)
 
-    #        self.ax.quiver(X, Y, U, V, angles="xy", color="blue", alpha=0.6, width=0.003)
+        self.ax.quiver(
+            X, Y, U, V, angles="xy", scale=10, color="blue", alpha=0.6, width=0.003
+        )
 
     def setup_dynamic_elements(self):
         """Set up elements that will be updated during animation"""
@@ -169,7 +179,7 @@ class GeographyPlotter:
         )
         self.wind_text = self.ax.text(
             0.02,
-            0.75,
+            0.88,
             "",
             transform=self.ax.transAxes,
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
@@ -225,22 +235,16 @@ class GeographyPlotter:
 
 if __name__ == "__main__":
     print("Setting up real-world sailing simulation...")
-    bounds = (
-        min(start[0], goal[0]),
-        max(start[0], goal[0]),
-        min(start[1], goal[1]),
-        max(start[1], goal[1]),
-    )
+
     # Create real-world sailing environment
     sailing_env = create_sailing_environment(
-        bounds=bounds,
-        wind_speed=WIND_SPEED,
-        wind_direction=WIND_DIRECTION,
+        area=CURRENT_AREA, wind_speed=WIND_SPEED, wind_direction=WIND_DIRECTION
     )
 
     # Get start and goal positions in meter coordinates
-    start_geo = (start[0], start[1])
-    goal_geo = (goal[0], goal[1])
+    waypoints = WAYPOINTS[CURRENT_AREA]
+    start_geo = waypoints["start"]
+    goal_geo = waypoints["goal"]
 
     start_pos, goal_pos = sailing_env.get_start_goal_positions(start_geo, goal_geo)
 
