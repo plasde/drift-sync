@@ -3,7 +3,7 @@ import heapq
 from core.wind import WindField
 from core.polar import polar_performance
 from math import atan2, pi, cos, sin, radians, degrees
-from scipy.optimize import minimize
+
 
 import logging
 
@@ -13,20 +13,19 @@ logger = logging.getLogger("sailing_pathfinder")
 def a_star(start,
            goal,
            wind_field: WindField,
-           geo = None,
-           step_size = 1.0,
-           angle_resolution = pi/32,
-           grid_resolution = 0.5,
-           course_break_penalty = 1.0,
+           step_size=1.0,
+           angle_resolution=pi/32,
+           grid_resolution=0.5,
+           course_break_penalty=1.0,
            course_holding_angle = pi/16):
     
     wind_cache = {}
-    minx, maxx = wind_field.minx, wind_field.maxx
-    miny, maxy = wind_field.miny, wind_field.maxy
+    grid_size = wind_field.width
 
     def normalize_angle(angle):
         return abs(pi - (angle) % (2 * pi))
-    
+
+
     #### Simplest model ####
         # Basically: 2 straight legs to goal with best vmc, with one tack
         # Goal up wind: same thing actually.
@@ -45,14 +44,19 @@ def a_star(start,
         wind_dir = atan2(wind[1], wind[0])
         goal_dir = atan2(to_goal[1], to_goal[0])
 
-        wind_to_boat_angle = goal_dir - wind_dir
+        tack_penalty = 0.0
+        if abs(wind_dir - goal_dir) < radians(30):
+            remaining_distance = remaining_distance * 0.58 * 2 # Triangle
+            tack_penalty = 150.0
+
+        wind_to_boat_angle = wind_dir - heading
         goal_to_boat_angle = goal_dir - heading
 
         boat_speed = polar_performance(wind_to_boat_angle) * wind_speed
         vmc = boat_speed * cos(goal_to_boat_angle)
 
         time_cost = remaining_distance / (vmc + 1e-2)
-        return time_cost 
+        return time_cost + tack_penalty
 
     def neighbors(node, goal):
         to_goal = np.array(goal) - np.array(node)
@@ -63,7 +67,7 @@ def a_star(start,
             dx = step_size * cos(angle)
             dy = step_size * sin(angle)
             nx, ny = node[0] + dx, node[1] + dy
-            if minx <= nx <= maxx and miny <= ny <= maxy and (geo.is_sea(nx,ny) or geo is None):
+            if 0 <= nx < grid_size and 0 <= ny < grid_size:
                 yield (nx, ny), np.array([dx, dy]), angle
 
     def snap_to_grid(pos, resolution):
@@ -73,11 +77,9 @@ def a_star(start,
         )
     
     def get_cached_wind(pos):
-        ix = int((pos[0] - minx) / wind_field.dx)
-        iy = int((pos[1] - miny) / wind_field.dy)
-        ix = np.clip(ix, 0, wind_field.width - 1)
-        iy = np.clip(iy, 0, wind_field.height - 1)
-        return wind_cache.setdefault((ix, iy), np.array(wind_field.get_vector(pos[0], pos[1])))
+        x = int(np.clip(pos[0], 0, grid_size - 1))
+        y = int(np.clip(pos[1], 0, grid_size - 1))
+        return wind_cache.setdefault((x, y), np.array(wind_field.get_vector(x, y)))
     
     def compute_heading_metrics(wind_vec, movement_vec):
         wind_speed = np.linalg.norm(wind_vec)
@@ -111,7 +113,7 @@ def a_star(start,
             angle_diff -= 2 * pi
         new_tack = np.sign(angle_diff)
         tack_changed = (current_tack is not None and float(new_tack) != float(current_tack))
-        tack_penalty = 75.0 if tack_changed else 0.0
+        tack_penalty = 500.0 if tack_changed else 0.0
         if tack_changed:
             boat_speed *= 0.5
 
@@ -121,10 +123,8 @@ def a_star(start,
             heading_change = normalize_angle(heading - current_heading)
             if heading_change > course_holding_angle:
                 course_change_penalty = heading_change * course_break_penalty * 0.5  # or your weight
-        
-        vmc = boat_speed * cos(normalize_angle(atan2(neighbor[1], neighbor[0]) - heading))
 
-        time_cost = step_dist / (vmc)  # VMC to goal
+        time_cost = step_dist / (boat_speed)
         g = current_g + time_cost + tack_penalty + course_change_penalty
         h = heuristic(neighbor, goal_node, heading_set=heading)
 
