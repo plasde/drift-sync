@@ -2,13 +2,13 @@ import numpy as np
 from math import sin, cos
 
 
-class WindField:
+class Wind:
     """
     Updated WindField class that works with real-world meter coordinates
     and provides uniform wind across the field
     """
 
-    def __init__(self, bounds, resolution, wind_speed=8.0, wind_direction=0.0):
+    def __init__(self, geography, wind_speed=8.0, wind_direction=0.0):
         """
         Parameters:
             bounds: (minx, maxx, miny, maxy) — real-world bounds in meters
@@ -16,12 +16,8 @@ class WindField:
             wind_speed: Uniform wind speed in knots
             wind_direction: Wind direction in radians (from north, clockwise)
         """
-        self.minx, self.maxx, self.miny, self.maxy = bounds
-
-        if isinstance(resolution, tuple):
-            self.dx, self.dy = resolution
-        else:
-            self.dx = self.dy = resolution
+        self.minx, self.maxx, self.miny, self.maxy = geography.bounds_m
+        self.dx = self.dy = geography.resolution
 
         self.width = int((self.maxx - self.minx) / self.dx) + 1
         self.height = int((self.maxy - self.miny) / self.dy) + 1

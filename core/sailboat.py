@@ -2,11 +2,12 @@ import numpy as np
 from math import atan2, pi, sin, cos
 from core.polar import polar_performance
 
+
 class Sailboat:
     def __init__(self, pos, heading, boat_type, dt):
-        self.pos = pos
+        self.pos = np.array(pos, dtype=float)
         self.heading = heading
-        self.history = [pos.copy()]
+        self.history = [self.pos.copy()]
         self.current_speed = 0
         self.velocity = np.array([0.0, 0.0])
         self.path = []
@@ -39,7 +40,10 @@ class Sailboat:
         self.apparent_wind_vec = wind_vec - self.velocity
         self.apparent_wind_speed = np.linalg.norm(self.apparent_wind_vec)
         if self.apparent_wind_speed > 0.001:
-            angle = atan2(self.apparent_wind_vec[1], self.apparent_wind_vec[0]) - self.heading
+            angle = (
+                atan2(self.apparent_wind_vec[1], self.apparent_wind_vec[0])
+                - self.heading
+            )
             self.apparent_wind_angle = (angle + pi) % (2 * pi) - pi
         else:
             self.apparent_wind_angle = 0
@@ -48,11 +52,15 @@ class Sailboat:
         self.target = self.path[self.path_index]
         self.direction_to_target = self.target - self.pos
         self.distance_to_target = np.linalg.norm(self.direction_to_target)
-        self.target_angle = atan2(self.direction_to_target[1], self.direction_to_target[0])
+        self.target_angle = atan2(
+            self.direction_to_target[1], self.direction_to_target[0]
+        )
 
     def _adjust_heading(self):
         heading_diff = (self.target_angle - self.heading + pi) % (2 * pi) - pi
-        max_turn = self.max_turn_rate / max(1.0, self.current_speed / self.turn_speed_factor)
+        max_turn = self.max_turn_rate / max(
+            1.0, self.current_speed / self.turn_speed_factor
+        )
         steering = np.clip(heading_diff, -max_turn * self.dt, max_turn * self.dt)
         self.heading += steering
 
@@ -66,10 +74,12 @@ class Sailboat:
 
     def _apply_drag(self):
         drag = self.drag_coefficient * self.current_speed * self.current_speed
-        self.current_speed -= drag * self.dt 
+        self.current_speed -= drag * self.dt
 
     def _update_velocity(self):
-        self.velocity = np.array([cos(self.heading), sin(self.heading)]) * self.current_speed
+        self.velocity = (
+            np.array([cos(self.heading), sin(self.heading)]) * self.current_speed
+        )
 
     def _move(self):
         self.pos += self.velocity * self.dt
