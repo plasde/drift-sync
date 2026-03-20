@@ -110,10 +110,11 @@ class Geography:
         """Compute (north, south, east, west) from two positions"""
         lat1, lon1 = pos1
         lat2, lon2 = pos2
-        north = max(lat1, lat2)
-        south = min(lat1, lat2)
-        east = max(lon1, lon2)
-        west = min(lon1, lon2)
+        pad = 0.5
+        north = max(lat1, lat2) + pad
+        south = min(lat1, lat2) - pad
+        east = max(lon1, lon2) + pad
+        west = min(lon1, lon2) - pad
         return north, south, east, west
 
     def snap_to_sea(self, x, y):
@@ -126,9 +127,8 @@ class Geography:
         dists = (x_flat - x) ** 2 + (y_flat - y) ** 2
         idx = np.argmin(dists)
         # Clamp to bounds
-        sx = np.clip(x_flat[idx], self.minx, self.maxx)
-        sy = np.clip(y_flat[idx], self.miny, self.maxy)
-        return sx, sy
+        ix, iy = self.meters_to_index(x_flat[idx], y_flat[idx])
+        return self.index_to_meters(ix, iy)
 
     def is_sea(self, x, y):
         """

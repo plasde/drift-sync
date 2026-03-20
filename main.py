@@ -6,7 +6,7 @@ from viz.plotter import Plotter
 from core.sailboat import Sailboat
 from core.wind import Wind
 from core.geography import Geography
-
+from math import pi, radians
 from nav.path_finder import a_star
 # from nav.rudder_control_env import RudderControlEnv
 # from nav.basic_controller import BasicControllerAgent
@@ -15,7 +15,7 @@ matplotlib.set_loglevel("WARNING")
 # Set up logging
 logging.basicConfig(
     filename="pathfinder.log",
-    level=logging.DEBUG,
+    level=logging.WARNING,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("sailing_pathfinder")
@@ -26,7 +26,7 @@ SIM_DURATION = 500
 DT = 1.0
 # Wind conditions
 WIND_SPEED = 5.0  # knots
-WIND_DIRECTION = 220  # degrees from north
+WIND_DIRECTION = 270  # degrees from north
 
 # SAILING_AREAS
 #    "english_channel": (51.10, 51.0, 1.6, 0.0),  # Dover-Calais area
@@ -36,8 +36,8 @@ WIND_DIRECTION = 220  # degrees from north
 #    "solent": (50.8, 50.7, -1.2, -1.6),  # Solent, UK
 
 # Geographic waypoints (lat, lon) -- NOTE: so this needs to be converted to Meters
-start = (52.3, 4.9)
-goal = (51.5, 0.0)
+start = (52.3, 4.9)  # Amsterdam
+goal = (51.5, 1.4)  # Thames estuary
 
 
 if __name__ == "__main__":
@@ -78,7 +78,9 @@ if __name__ == "__main__":
     print(f"Start is sea: {geography.is_sea(*start_m)}")
     print(f"Goal is sea: {geography.is_sea(*goal_m)}")
 
-    wind = Wind(geography)
+    wind = Wind(
+        geography, wind_speed=WIND_SPEED, wind_direction=radians(WIND_DIRECTION)
+    )
 
     # Print some info
     print("\nEnvironment Info:")
@@ -90,8 +92,8 @@ if __name__ == "__main__":
         goal=goal_m,
         wind_field=wind,
         geography=geography,
-        step_size=1,  # Meters
-        grid_resolution=1000,
+        step_size=10000,  # Meters
+        angle_resolution=pi / 16,
         course_break_penalty=1.0,
     )
     print(f"Path found: {len(path)} waypoints")
