@@ -52,8 +52,8 @@ class Plotter:
             self.ax.add_patch(plt.Rectangle((ox - 0.5, oy - 0.5), 1, 1, color="black"))
 
         # Planned path
-        if self.path and getattr(self.path, "coords", None) is not None:
-            coords = self.path.get_coords()
+        if self.path and len(self.path) > 1:
+            coords = np.array(self.path)
             self.ax.plot(
                 coords[:, 0], coords[:, 1], "k--", alpha=0.8, label="Planned Path"
             )

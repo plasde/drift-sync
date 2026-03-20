@@ -125,7 +125,10 @@ class Geography:
         y_flat = self.yy[mask]
         dists = (x_flat - x) ** 2 + (y_flat - y) ** 2
         idx = np.argmin(dists)
-        return x_flat[idx], y_flat[idx]
+        # Clamp to bounds
+        sx = np.clip(x_flat[idx], self.minx, self.maxx)
+        sy = np.clip(y_flat[idx], self.miny, self.maxy)
+        return sx, sy
 
     def is_sea(self, x, y):
         """
@@ -144,3 +147,15 @@ class Geography:
     def geo_to_meters(self, lon, lat):
         """Convert lat/lon to meters"""
         return self.transformer.transform(lon, lat)
+
+    def meters_to_index(self, x, y):
+        ix = int((x - self.minx) / self.resolution)
+        iy = int((y - self.miny) / self.resolution)
+        ix = np.clip(ix, 0, self.sea_mask.shape[1] - 1)
+        iy = np.clip(iy, 0, self.sea_mask.shape[0] - 1)
+        return ix, iy
+
+    def index_to_meters(self, ix, iy):
+        x = self.minx + ix * self.resolution
+        y = self.miny + iy * self.resolution
+        return x, y
