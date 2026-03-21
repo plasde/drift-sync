@@ -196,3 +196,67 @@ class Wind:
         j = np.clip(j, 0, self.width - 1)
 
         return self.speed_grid[i, j], self.dir_grid[i, j]
+
+
+class SpatialWind:
+    """
+    Spatially varying wind field interpolated from a fetched Open-Meteo grid.
+    Drop-in replacement for Wind — same get_vector(x, y) interface.
+    """
+
+    def __init__(self, wind_data, geography):
+        """
+        Args:
+            wind_data:  dict returned by data_scraper.weather.fetch_wind_grid()
+            geography:  Geography instance (used for coordinate conversion)
+        """
+        self.lats = np.array(wind_data["lats"])  # ascending, shape (n_lat,)
+        self.lons = np.array(wind_data["lons"])  # ascending, shape (n_lon,)
+        self.u_grid = np.array(wind_data["u_grid"])  # shape (n_lat, n_lon)
+        self.v_grid = np.array(wind_data["v_grid"])
+        self.geography = geography
+
+        # Summary stats (used by plotter text display)
+        speeds = np.sqrt(self.u_grid**2 + self.v_grid**2)
+        self.wind_speed = float(speeds.mean())
+
+        n_lat, n_lon = self.u_grid.shape
+        print(
+            f"SpatialWind: {n_lat}x{n_lon} grid, "
+            f"avg {self.wind_speed:.1f} kts, "
+            f"lat {self.lats[0]:.1f}–{self.lats[-1]:.1f}, "
+            f"lon {self.lons[0]:.1f}–{self.lons[-1]:.1f}"
+        )
+
+    def get_vector(self, x, y):
+        """
+        Return (u, v) wind in knots at projected meter coordinates (x, y).
+        Bilinear interpolation across the lat/lon grid.
+        """
+        lon, lat = self.geography.meters_to_geo(x, y)
+        u = self._bilinear(self.u_grid, lat, lon)
+        v = self._bilinear(self.v_grid, lat, lon)
+        return u, v
+
+    def _bilinear(self, grid, lat, lon):
+        """Bilinear interpolation. Clamps to grid edges rather than extrapolating."""
+        lat = float(np.clip(lat, self.lats[0], self.lats[-1]))
+        lon = float(np.clip(lon, self.lons[0], self.lons[-1]))
+
+        # Lower-left corner indices
+        i0 = int(np.searchsorted(self.lats, lat) - 1)
+        j0 = int(np.searchsorted(self.lons, lon) - 1)
+        i0 = int(np.clip(i0, 0, len(self.lats) - 2))
+        j0 = int(np.clip(j0, 0, len(self.lons) - 2))
+        i1, j1 = i0 + 1, j0 + 1
+
+        # Fractional position within the cell
+        lat_f = (lat - self.lats[i0]) / (self.lats[i1] - self.lats[i0])
+        lon_f = (lon - self.lons[j0]) / (self.lons[j1] - self.lons[j0])
+
+        return float(
+            grid[i0, j0] * (1 - lat_f) * (1 - lon_f)
+            + grid[i0, j1] * (1 - lat_f) * lon_f
+            + grid[i1, j0] * lat_f * (1 - lon_f)
+            + grid[i1, j1] * lat_f * lon_f
+        )

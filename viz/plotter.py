@@ -24,7 +24,7 @@ class Plotter:
 
         self._setup_static_elements()
         self._setup_dynamic_elements()
-        # self._plot_wind_field()
+        self._plot_wind_field()
 
     def _setup_static_elements(self):
         # Bounds + padding
@@ -116,9 +116,6 @@ class Plotter:
 
         # Update text
         self.speed_text.set_text(f"Speed: {self.boat.current_speed:.2f} knots")
-        wind_speed = np.linalg.norm(wind_vec)
-        wind_dir = (degrees(np.arctan2(wind_vec[0], wind_vec[1])) + 180) % 360
-        self.wind_text.set_text(f"Wind: {wind_speed:.1f} knots from {wind_dir:.0f}°")
 
         return self.boat_marker, self.track_line
 
@@ -133,3 +130,38 @@ class Plotter:
             repeat=False,
         )
         plt.show()
+
+    def _plot_wind_field(self):
+        from core.wind import SpatialWind
+
+        if not isinstance(self.wind, SpatialWind):
+            return  # Uniform wind doesn't need a spatial plot
+
+        for i, lat in enumerate(self.wind.lats):
+            for j, lon in enumerate(self.wind.lons):
+                x, y = self.geo.geo_to_meters(lon, lat)
+                u = self.wind.u_grid[i, j]
+                v = self.wind.v_grid[i, j]
+                self.ax.quiver(
+                    x,
+                    y,
+                    u,
+                    v,
+                    angles="xy",
+                    scale=50,
+                    scale_units="inches",
+                    color="steelblue",
+                    alpha=0.6,
+                    width=0.003,
+                )
+                # Speed label underneath each arrow
+                speed = np.sqrt(u**2 + v**2)
+                self.ax.text(
+                    x,
+                    y - 15000,
+                    f"{speed:.1f}kt",
+                    fontsize=6,
+                    color="steelblue",
+                    ha="center",
+                    alpha=0.7,
+                )

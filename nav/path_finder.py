@@ -53,6 +53,9 @@ def a_star(
         vmc = boat_speed * cos(goal_to_boat_angle)
 
         time_cost = remaining_distance / (vmc + 1e-2)
+        # TODO: units are meters/knots - dimensionally not wrong but ratios hold so A*
+        # is correct. For real elapsed time estimates, multiply boat_speed by 0.514444 (knots -> m/s)
+        # before this division. Matters when route duration is a feature, not just a path shape.
         return time_cost + tack_penalty
 
     def neighbors(node, goal_node):

@@ -4,10 +4,11 @@ matplotlib.use("TkAgg")
 import logging
 from viz.plotter import Plotter
 from core.sailboat import Sailboat
-from core.wind import Wind
+from core.wind import SpatialWind
 from core.geography import Geography
-from math import pi, radians
+from math import pi
 from nav.path_finder import a_star
+from data_scraper.weather import fetch_wind_grid
 # from nav.rudder_control_env import RudderControlEnv
 # from nav.basic_controller import BasicControllerAgent
 
@@ -24,9 +25,14 @@ logger = logging.getLogger("sailing_pathfinder")
 # Constants for simulation
 SIM_DURATION = 500
 DT = 1.0
+
 # Wind conditions
 WIND_SPEED = 5.0  # knots
 WIND_DIRECTION = 270  # degrees from north
+WIND_GRID_RESOLUTION_DEG = 0.5  # FOr trans-Atlantic we will need to think about scaling
+WIND_FORECAST_HOURS = 48
+USE_HISTORICAL = False
+HISTORICAL_DATE = "2024-11-15"
 
 # SAILING_AREAS
 #    "english_channel": (51.10, 51.0, 1.6, 0.0),  # Dover-Calais area
@@ -78,13 +84,25 @@ if __name__ == "__main__":
     print(f"Start is sea: {geography.is_sea(*start_m)}")
     print(f"Goal is sea: {geography.is_sea(*goal_m)}")
 
-    wind = Wind(
-        geography, wind_speed=WIND_SPEED, wind_direction=radians(WIND_DIRECTION)
+    bounds = (
+        geography.north,
+        geography.south,
+        geography.east,
+        geography.west,
     )
+
+    wind_data = fetch_wind_grid(
+        bounds,
+        grid_resolution_deg=WIND_GRID_RESOLUTION_DEG,
+        forecast_hours=WIND_FORECAST_HOURS,
+        use_historical=USE_HISTORICAL,
+        historical_date=HISTORICAL_DATE if USE_HISTORICAL else None,
+    )
+    wind = SpatialWind(wind_data, geography)
 
     # Print some info
     print("\nEnvironment Info:")
-    print(f"Wind: {WIND_SPEED:.1f} knots @ {WIND_DIRECTION}°")
+    print(f" Wind: {wind.wind_speed:.1f} knots avg (spatial, 48h mean)")
 
     print("\nRunning A* pathfinding...")
     path = a_star(
