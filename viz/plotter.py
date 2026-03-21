@@ -117,8 +117,8 @@ class Plotter:
         # Update text
         self.speed_text.set_text(f"Speed: {self.boat.current_speed:.2f} knots")
         wind_speed = np.linalg.norm(wind_vec)
-        wind_dir = degrees(np.arctan2(wind_vec[0], wind_vec[1]))
-        self.wind_text.set_text(f"Wind: {wind_speed:.1f} knots @ {wind_dir:.0f}°")
+        wind_dir = (degrees(np.arctan2(wind_vec[0], wind_vec[1])) + 180) % 360
+        self.wind_text.set_text(f"Wind: {wind_speed:.1f} knots from {wind_dir:.0f}°")
 
         return self.boat_marker, self.track_line
 
